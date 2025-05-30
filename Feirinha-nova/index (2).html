@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Análise de Qualidade de Produtos</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Variáveis de cor ajustadas para um layout menos escuro */
+        :root {
+            --vinho-escuro: #800020; /* Mais claro */
+            --vinho-claro: #B03A5A; /* Mais claro */
+            --dourado: #FFD700;
+            --aprovado: #28A745;
+            --atencao: #FFC107;
+            --reprovado: #DC3545;
+            --texto-claro: #F8F8F8; /* Branco quase puro para contrastar com vinho mais claro */
+            --texto-escuro: #333333; /* Preto suave para textos em fundos claros */
+            --fundo-principal: #fdf2f2; /* Fundo muito claro */
+            --fundo-card: #ffe0e0; /* Fundo dos cards mais claro */
+            --borda-card: #f0c0c0; /* Borda suave para cards */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--fundo-principal); /* Fundo menos escuro */
+            color: var(--texto-escuro); /* Cor de texto padrão para o corpo */
+        }
+
+        .container {
+            max-width: 1700px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header-frame, .main-content-frame, .footer-frame {
+            background-color: var(--fundo-card); /* Fundos de frames mais claros */
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra mais suave */
+        }
+
+        .header-frame {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-info {
+            flex-grow: 1; 
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap; /* Permite quebrar linha em telas menores */
+            gap: 10px;
+        }
+
+        .header-label {
+            color: var(--vinho-escuro); /* Cor ajustada para o texto */
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .header-input {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--borda-card); /* Borda suave */
+            background-color: var(--texto-claro); /* Fundo do input claro */
+            color: var(--texto-escuro);
+        }
+
+        .header-button, .sample-button {
+            background-color: var(--dourado);
+            color: var(--vinho-escuro); /* Cor de texto vinho escuro */
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .sample-button {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .header-button:hover, .sample-button:hover {
+            background-color: #e0c800; /* Dourado um pouco mais escuro no hover */
+            transform: translateY(-1px);
+        }
+
+        .product-name {
+            margin-left: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--vinho-escuro); /* Cor ajustada */
+        }
+
+        .datetime-container {
+            margin-left: auto; 
+            text-align: right;
+            color: var(--vinho-escuro); /* Cor ajustada */
+            font-size: 14px;
+            padding-left: 20px; 
+        }
+
+        #messageArea {
+            text-align: center;
+            padding: 10px 0;
+            font-weight: bold;
+            min-height: 20px; 
+        }
+
+        .filtros-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: var(--vinho-claro); /* Cor do filtro mais clara */
+            border-radius: 8px;
+            color: var(--texto-claro); /* Texto dos filtros branco */
+        }
+
+        .filtro-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filtro-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--dourado); /* Cor do checkbox */
+        }
+
+        .filtro-label {
+            color: var(--texto-claro); /* Cor do texto do filtro */
+            font-size: 14px;
+        }
+
+        .amostras-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            justify-content: space-around; /* Distribui as colunas igualmente */
+        }
+
+        .amostra-coluna {
+            flex: 1;
+            min-width: 220px; /* Reduzido para caber 4 */
+            max-width: 350px; /* Reduzido para caber 4 */
+            background-color: var(--fundo-card); /* Fundo do card mais claro */
+            border: 1px solid var(--borda-card); /* Borda suave */
+            padding: 15px;
+            border-radius: 8px;
+            display: none; 
+            max-height: 520px; 
+            overflow-y: auto; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08); /* Sombra mais sutil */
+        }
+
+        .amostra-coluna.visible {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .amostra-titulo {
+            color: var(--vinho-escuro); /* Título mais visível */
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            text-align: center;
+            position: sticky; 
+            top: -15px; 
+            background-color: var(--fundo-card); /* Mantém o fundo para o sticky */
+            padding: 10px 0;
+            z-index: 10;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .amostra-limites {
+            color: var(--vinho-escuro); /* Limites mais visíveis */
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .sample-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .inputs-container {
+            flex-grow: 1; 
+            overflow-y: auto; 
+            padding-right: 5px;
+        }
+
+        .amostra-input {
+            width: calc(100% - 12px); 
+            padding: 6px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--borda-card); /* Borda suave */
+            background-color: var(--texto-claro); /* Fundo input claro */
+            color: var(--texto-escuro);
+            box-sizing: border-box;
+        }
+        .amostra-input.aprovado-style {
+            border-left: 5px solid var(--aprovado);
+            background-color: #e0ffe0; /* Verde bem suave */
+        }
+        .amostra-input.atencao-style {
+            border-left: 5px solid var(--atencao);
+            background-color: #fffbe0; /* Amarelo bem suave */
+        }
+        .amostra-input.reprovado-style {
+            border-left: 5px solid var(--reprovado);
+            background-color: #ffe0e0; /* Vermelho bem suave */
+        }
+
+        .resumo-coluna {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: var(--vinho-claro); /* Fundo do resumo mais claro */
+            border-radius: 5px;
+            color: var(--texto-claro); /* Texto do resumo branco */
+        }
+
+        .resumo-titulo {
+            color: var(--dourado);
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .resumo-valor {
+            font-size: 12px;
+            margin-bottom: 3px;
+            text-align: center;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stats-coluna {
+            background-color: var(--fundo-card);
+            border: 1px solid var(--borda-card);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            flex: 1;
+        }
+
+        .resumo-graf-coluna {
+            background-color: var(--vinho-claro);
+            color: var(--texto-claro);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            flex: 1;
+        }
+
+        .stats-titulo {
+            color: var(--vinho-escuro); /* Título mais visível */
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .stats-valor {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: var(--texto-escuro); /* Texto da estatística mais escuro */
+        }
+
+        .resumo-graf-valor {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: var(--texto-claro);
+            text-align: center;
+        }
+
+        .graphs-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            justify-content: space-around; /* Distribui os gráficos igualmente */
+        }
+
+        .graph-frame {
+            flex: 1 1 calc(50% - 20px); 
+            min-width: 350px; 
+            max-width: calc(50% - 10px); 
+            background-color: var(--texto-claro);
+            border-radius: 10px;
+            padding: 15px;
+            display: none; 
+            box-sizing: border-box;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .graph-frame canvas {
+            height: 350px !important;
+        }
+
+        .graph-frame.visible {
+            display: block;
+        }
+
+        /* Estilos para impressão e relatório */
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            
+            .header-frame, .main-content-frame, .footer-frame {
+                background-color: white !important;
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+            }
+            
+            .filtros-container {
+                background-color: #f8f8f8 !important;
+                color: black !important;
+            }
+            
+            .graph-frame {
+                background-color: white !important;
+                border: 1px solid #ddd !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            
+            .stats-coluna {
+                background-color: #f9f9f9 !important;
+                border: 1px solid #ddd !important;
+            }
+            
+            .footer-frame {
+                display: none !important;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .relatorio-style {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .relatorio-style h1, .relatorio-style h2 {
+            color: #800020;
+            border-bottom: 2px solid #800020;
+            padding-bottom: 5px;
+        }
+        
+        .relatorio-style table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+        }
+        
+        .relatorio-style th, .relatorio-style td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .relatorio-style th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        
+        .relatorio-style .aprovado {
+            color: #28A745;
+            font-weight: bold;
+        }
+        
+        .relatorio-style .atencao {
+            color: #FFC107;
+            font-weight: bold;
+        }
+        
+        .relatorio-style .reprovado {
+            color: #DC3545;
+            font-weight: bold;
+        }
+
+        .footer-buttons {
+            display: flex;
+            justify-content: space-around; 
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .footer-button {
+            background-color: var(--dourado);
+            color: var(--vinho-escuro);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            flex-grow: 1; 
+            text-align: center;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .footer-button:hover {
+            background-color: #e0c800; /* Dourado um pouco mais escuro no hover */
+            transform: translateY(-1px);
+        }
+
+        /* Cores de status */
+        .aprovado { color: var(--aprovado); }
+        .atencao { color: var(--atencao); }
+        .reprovado { color: var(--reprovado); }
+
+        /* Responsividade para telas menores */
+        @media (max-width: 1500px) {
+            .amostras-container, .stats-container, .graphs-container {
+                justify-content: center; /* Centraliza se não couberem 4 */
+            }
+            .amostra-coluna, .stats-coluna, .graph-frame {
+                max-width: calc(50% - 15px); /* Duas colunas */
+            }
+        }
+        @media (max-width: 900px) {
+            .amostra-coluna, .stats-coluna, .graph-frame {
+                max-width: 100%; /* Uma coluna */
+            }
+            .header-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .datetime-container {
+                margin-left: unset;
+                text-align: left;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-frame">
+            <div class="header-info">
+                <span class="header-label">Código do Produto:</span>
+                <input type="text" id="codigoProduto" class="header-input" placeholder="Digite o código" onkeydown="if(event.key==='Enter') buscarProduto()">
+                <button class="header-button" onclick="buscarProduto()">Buscar Produto</button>
+                <span class="header-label">Produto:</span>
+                <span id="nomeProduto" class="product-name">N/A</span>
+            </div>
+            <div class="datetime-container">
+                <div id="currentDate"></div>
+                <div id="currentTime"></div>
+            </div>
+        </div>
+        <div id="messageArea"></div>
+
+        <div class="main-content-frame">
+            <div class="filtros-container">
+                <div class="filtro-item">
+                    <input type="checkbox" id="filtroPeso" class="filtro-checkbox" checked onchange="atualizarColunasVisiveis()">
+                    <label for="filtroPeso" class="filtro-label">Peso</label>
+                </div>
+                <div class="filtro-item">
+                    <input type="checkbox" id="filtroComprimento" class="filtro-checkbox" checked onchange="atualizarColunasVisiveis()">
+                    <label for="filtroComprimento" class="filtro-label">Comprimento</label>
+                </div>
+                <div class="filtro-item">
+                    <input type="checkbox" id="filtroAltura" class="filtro-checkbox" checked onchange="atualizarColunasVisiveis()">
+                    <label for="filtroAltura" class="filtro-label">Altura</label>
+                </div>
+                <div class="filtro-item">
+                    <input type="checkbox" id="filtroLargura" class="filtro-checkbox" checked onchange="atualizarColunasVisiveis()">
+                    <label for="filtroLargura" class="filtro-label">Largura</label>
+                </div>
+            </div>
+
+            <div class="amostras-container">
+                <div class="amostra-coluna" id="colunaPeso">
+                    <div class="amostra-titulo">Peso (g)</div>
+                    <div id="pesoLimites" class="amostra-limites">Min: N/A | Max: N/A</div>
+                    <div class="sample-controls">
+                        <button class="sample-button" onclick="addSampleInput('peso')">Adicionar Amostra</button>
+                        <button class="sample-button" onclick="removeLastSampleInput('peso')">Excluir Última</button>
+                    </div>
+                    <div id="pesoInputsContainer" class="inputs-container"></div>
+                    <div class="resumo-coluna">
+                        <div class="resumo-titulo">Resumo Peso</div>
+                        <div class="resumo-valor" id="pesoAprovadas">Aprovadas: 0</div>
+                        <div class="resumo-valor" id="pesoAtencao">Atenção: 0</div>
+                        <div class="resumo-valor" id="pesoReprovadas">Reprovadas: 0</div>
+                        <div class="resumo-valor" id="pesoPorcentagem">% Dentro (Ideal): 0%</div>
+                    </div>
+                </div>
+
+                <div class="amostra-coluna" id="colunaComprimento">
+                    <div class="amostra-titulo">Comprimento (cm)</div>
+                    <div id="comprimentoLimites" class="amostra-limites">Min: N/A | Max: N/A</div>
+                    <div class="sample-controls">
+                        <button class="sample-button" onclick="addSampleInput('comprimento')">Adicionar Amostra</button>
+                        <button class="sample-button" onclick="removeLastSampleInput('comprimento')">Excluir Última</button>
+                    </div>
+                    <div id="comprimentoInputsContainer" class="inputs-container"></div>
+                    <div class="resumo-coluna">
+                        <div class="resumo-titulo">Resumo Comprimento</div>
+                        <div class="resumo-valor" id="comprimentoAprovadas">Aprovadas: 0</div>
+                        <div class="resumo-valor" id="comprimentoAtencao">Atenção: 0</div>
+                        <div class="resumo-valor" id="comprimentoReprovadas">Reprovadas: 0</div>
+                        <div class="resumo-valor" id="comprimentoPorcentagem">% Dentro (Ideal): 0%</div>
+                    </div>
+                </div>
+
+                <div class="amostra-coluna" id="colunaAltura">
+                    <div class="amostra-titulo">Altura (cm)</div>
+                    <div id="alturaLimites" class="amostra-limites">Min: N/A | Max: N/A</div>
+                     <div class="sample-controls">
+                        <button class="sample-button" onclick="addSampleInput('altura')">Adicionar Amostra</button>
+                        <button class="sample-button" onclick="removeLastSampleInput('altura')">Excluir Última</button>
+                    </div>
+                    <div id="alturaInputsContainer" class="inputs-container"></div>
+                    <div class="resumo-coluna">
+                        <div class="resumo-titulo">Resumo Altura</div>
+                        <div class="resumo-valor" id="alturaAprovadas">Aprovadas: 0</div>
+                        <div class="resumo-valor" id="alturaAtencao">Atenção: 0</div>
+                        <div class="resumo-valor" id="alturaReprovadas">Reprovadas: 0</div>
+                        <div class="resumo-valor" id="alturaPorcentagem">% Dentro (Ideal): 0%</div>
+                    </div>
+                </div>
+
+                <div class="amostra-coluna" id="colunaLargura">
+                    <div class="amostra-titulo">Largura (cm)</div>
+                    <div id="larguraLimites" class="amostra-limites">Min: N/A | Max: N/A</div>
+                    <div class="sample-controls">
+                        <button class="sample-button" onclick="addSampleInput('largura')">Adicionar Amostra</button>
+                        <button class="sample-button" onclick="removeLastSampleInput('largura')">Excluir Última</button>
+                    </div>
+                    <div id="larguraInputsContainer" class="inputs-container"></div>
+                    <div class="resumo-coluna">
+                        <div class="resumo-titulo">Resumo Largura</div>
+                        <div class="resumo-valor" id="larguraAprovadas">Aprovadas: 0</div>
+                        <div class="resumo-valor" id="larguraAtencao">Atenção: 0</div>
+                        <div class="resumo-valor" id="larguraReprovadas">Reprovadas: 0</div>
+                        <div class="resumo-valor" id="larguraPorcentagem">% Dentro (Ideal): 0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="graphs-container">
+                <div class="graph-frame" id="graficoPesoFrame">
+                    <canvas id="graficoPeso"></canvas>
+                    <div class="stats-container">
+                        <div class="stats-coluna" id="statsPeso">
+                            <div class="stats-titulo">Estatísticas</div>
+                            <div class="stats-valor" id="pesoMenor">Menor: N/A</div>
+                            <div class="stats-valor" id="pesoMedia">Média: N/A</div>
+                            <div class="stats-valor" id="pesoMaior">Maior: N/A</div>
+                            <div class="stats-valor" id="pesoDesvio">Desvio Padrão: N/A</div>
+                        </div>
+                        <div class="resumo-graf-coluna" id="resumoPesoGraf">
+                            <div class="resumo-graf-valor" id="pesoAprovadas2">Aprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="pesoAtencao2">Atenção: 0</div>
+                            <div class="resumo-graf-valor" id="pesoReprovadas2">Reprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="pesoPorcentagem2">% Dentro: 0%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="graph-frame" id="graficoComprimentoFrame">
+                    <canvas id="graficoComprimento"></canvas>
+                    <div class="stats-container">
+                        <div class="stats-coluna" id="statsComprimento">
+                            <div class="stats-titulo">Estatísticas</div>
+                            <div class="stats-valor" id="comprimentoMenor">Menor: N/A</div>
+                            <div class="stats-valor" id="comprimentoMedia">Média: N/A</div>
+                            <div class="stats-valor" id="comprimentoMaior">Maior: N/A</div>
+                            <div class="stats-valor" id="comprimentoDesvio">Desvio Padrão: N/A</div>
+                        </div>
+                        <div class="resumo-graf-coluna" id="resumoComprimentoGraf">
+                            <div class="resumo-graf-valor" id="comprimentoAprovadas2">Aprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="comprimentoAtencao2">Atenção: 0</div>
+                            <div class="resumo-graf-valor" id="comprimentoReprovadas2">Reprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="comprimentoPorcentagem2">% Dentro: 0%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="graph-frame" id="graficoAlturaFrame">
+                    <canvas id="graficoAltura"></canvas>
+                    <div class="stats-container">
+                        <div class="stats-coluna" id="statsAltura">
+                            <div class="stats-titulo">Estatísticas</div>
+                            <div class="stats-valor" id="alturaMenor">Menor: N/A</div>
+                            <div class="stats-valor" id="alturaMedia">Média: N/A</div>
+                            <div class="stats-valor" id="alturaMaior">Maior: N/A</div>
+                            <div class="stats-valor" id="alturaDesvio">Desvio Padrão: N/A</div>
+                        </div>
+                        <div class="resumo-graf-coluna" id="resumoAlturaGraf">
+                            <div class="resumo-graf-valor" id="alturaAprovadas2">Aprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="alturaAtencao2">Atenção: 0</div>
+                            <div class="resumo-graf-valor" id="alturaReprovadas2">Reprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="alturaPorcentagem2">% Dentro: 0%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="graph-frame" id="graficoLarguraFrame">
+                    <canvas id="graficoLargura"></canvas>
+                    <div class="stats-container">
+                        <div class="stats-coluna" id="statsLargura">
+                            <div class="stats-titulo">Estatísticas</div>
+                            <div class="stats-valor" id="larguraMenor">Menor: N/A</div>
+                            <div class="stats-valor" id="larguraMedia">Média: N/A</div>
+                            <div class="stats-valor" id="larguraMaior">Maior: N/A</div>
+                            <div class="stats-valor" id="larguraDesvio">Desvio Padrão: N/A</div>
+                        </div>
+                        <div class="resumo-graf-coluna" id="resumoLarguraGraf">
+                            <div class="resumo-graf-valor" id="larguraAprovadas2">Aprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="larguraAtencao2">Atenção: 0</div>
+                            <div class="resumo-graf-valor" id="larguraReprovadas2">Reprovadas: 0</div>
+                            <div class="resumo-graf-valor" id="larguraPorcentagem2">% Dentro: 0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-frame">
+            <div class="footer-buttons">
+    <button class="footer-button" onclick="mostrarMensagemOperacao('salvar')">Salvar Dados</button>
+    <button class="footer-button" onclick="mostrarMensagemOperacao('relatorio')">Gerar Relatório</button>
+    <button class="footer-button" onclick="mostrarMensagemOperacao('pdf')">Relatório PDF</button>
+    <button class="footer-button" onclick="mostrarMensagemOperacao('excel')">Salvar em Excel</button>
+    <button class="footer-button" onclick="mostrarMensagemOperacao('nao-conformidades')">Não Conformidades</button>
+    <button class="footer-button" onclick="mostrarMensagemOperacao('historico')">Ver Histórico</button>
+</div>
+        </div>
+    </div>
+
+    <script>
+        // Dados de produtos cadastrados completos
+        const PRODUTOS_CADASTRO = {
+            116: {nome: "Mini Pão Francês Sam's", peso_min: 27, peso_max: 36, comp_min: 7, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            117: {nome: "Baguete Mini Sam's", peso_min: 75, peso_max: 85, comp_min: 20, comp_max: 24, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 6.0},
+            127: {nome: "Baguete Média - Lanche", peso_min: 122, peso_max: 130, comp_min: 27, comp_max: 30, alt_min: 3.0, alt_max: 4.5, larg_min: 4.0, larg_max: 5.5},
+            128: {nome: "Pão Francês Pré-assado", peso_min: 68, peso_max: 75, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 7.0, larg_min: 5.5, larg_max: 7.5},
+            129: {nome: "Pão Francês Integral Pré Assado - 31% De Cereais Integrais", peso_min: 68, peso_max: 76, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 6.5, larg_min: 5.4, larg_max: 6.4},
+            130: {nome: "Mini Pão Francês", peso_min: 30, peso_max: 36, comp_min: 7, comp_max: 9, alt_min: 4.5, alt_max: 5.5, larg_min: 4.5, larg_max: 5.5},
+            132: {nome: "Baguete Mini", peso_min: 81, peso_max: 86, comp_min: 17, comp_max: 21, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            141: {nome: "Mini Pão Francês Integral Pré-assado - 31% De Cereais Integrais", peso_min: 38, peso_max: 47, comp_min: 7, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 5, larg_max: 5.5},
+            142: {nome: "Baguetine", peso_min: 70, peso_max: 80, comp_min: 16, comp_max: 19, alt_min: 5, alt_max: 6, larg_min: 5.5, larg_max: 6.5},
+            144: {nome: "Pão Francês Pré Assado Modelado", peso_min: 60, peso_max: 70, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 7.0, larg_min: 5.4, larg_max: 6.4},
+            145: {nome: "Mini Pão Francês Integral Sam's", peso_min: 38, peso_max: 45, comp_min: 7, comp_max: 9, alt_min: 4.0, alt_max: 5.0, larg_min: 5.0, larg_max: 6.0},
+            164: {nome: "Pão Bola Pacote", peso_min: 68, peso_max: 76, comp_min: 9.5, comp_max: 10.5, alt_min: 4.5, alt_max: 5.5, larg_min: 0.0, larg_max: 0.0},
+            169: {nome: "Pão Bola Gourmet Pacote", peso_min: 68, peso_max: 71, comp_min: 9.5, comp_max: 10.5, alt_min: 4.5, alt_max: 5.5, larg_min: 0.0, larg_max: 0.0},
+            170: {nome: "Mini Pão Francês Institucional Brico", peso_min: 30, peso_max: 40, comp_min: 7, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            171: {nome: "Pão Francês Tradicional Institucional Brico", peso_min: 60, peso_max: 70, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 6.5, larg_min: 5.4, larg_max: 6.4},
+            172: {nome: "Baguete Tradicional Institucional Brico", peso_min: 70, peso_max: 79, comp_min: 17, comp_max: 21, alt_min: 3.0, alt_max: 4.5, larg_min: 4.0, larg_max: 5.5},
+            173: {nome: "Baguete Mini Com Gergelim Institucional Brico", peso_min: 70, peso_max: 79, comp_min: 17, comp_max: 21, alt_min: 3.0, alt_max: 4.5, larg_min: 4.0, larg_max: 5.5},
+            174: {nome: "Pão Francês Integral Institucional Brico - 31% De Cereais Integrais", peso_min: 68, peso_max: 76, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 6.5, larg_min: 5.4, larg_max: 6.4},
+            175: {nome: "Mini Pão Francês Integral Institucional Brico - 31% De Cereais Integrais", peso_min: 38, peso_max: 47, comp_min: 7, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            183: {nome: "Mini Pão Francês Redondo", peso_min: 25, peso_max: 28, comp_min: 7, comp_max: 8, alt_min: 3.5, alt_max: 4.5, larg_min: 0.0, larg_max: 0.0},
+            202: {nome: "Croissant Pequeno Assado", peso_min: 25, peso_max: 32, comp_min: 8, comp_max: 10.5, alt_min: 2.5, alt_max: 3.5, larg_min: 3.5, larg_max: 4.5},
+            209: {nome: "Folhado de Maçã", peso_min: 95, peso_max: 105, comp_min: 10, comp_max: 12, alt_min: 1.5, alt_max: 2.5, larg_min: 5.5, larg_max: 6.5},
+            210: {nome: "Folhado De Banana", peso_min: 95, peso_max: 105, comp_min: 10, comp_max: 12, alt_min: 1.5, alt_max: 2.5, larg_min: 5.5, larg_max: 6.5},
+            214: {nome: "Folhado De Calabresa", peso_min: 95, peso_max: 105, comp_min: 10, comp_max: 12, alt_min: 1.5, alt_max: 2.5, larg_min: 5.5, larg_max: 6.5},
+            235: {nome: "Mini Croissant Multigrão", peso_min: 25, peso_max: 32, comp_min: 8, comp_max: 10.5, alt_min: 2.5, alt_max: 3.5, larg_min: 3.5, larg_max: 4.5},
+            236: {nome: "Pain Au Chocolat", peso_min: 25, peso_max: 35, comp_min: 6, comp_max: 7.5, alt_min: 0, alt_max: 0, larg_min: 0, larg_max: 0},
+            313: {nome: "Baguete Mini Gergelim Sam's", peso_min: 79, peso_max: 87, comp_min: 20, comp_max: 24, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 6.0},
+            330: {nome: "Baguete Frango com Requeijão", peso_min: 174, peso_max: 191, comp_min: 18, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            331: {nome: "Baguete Calabresa com Requeijão", peso_min: 174, peso_max: 191, comp_min: 18, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            333: {nome: "Baguete Mussarela com Requeijão", peso_min: 174, peso_max: 191, comp_min: 18, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            337: {nome: "Mini Baguete Especial Lanche", peso_min: 130, peso_max: 140, comp_min: 20, comp_max: 24, alt_min: 4.5, alt_max: 5.5, larg_min: 5.5, larg_max: 6.5},
+            338: {nome: "Mini Baguete Especial Lanche Integral", peso_min: 130, peso_max: 140, comp_min: 20, comp_max: 24, alt_min: 4.5, alt_max: 5.5, larg_min: 5.5, larg_max: 6.5},
+            357: {nome: "Baguete para Pão de Alho", peso_min: 54, peso_max: 66, comp_min: 13, comp_max: 16, alt_min: 4.3, alt_max: 4.5, larg_min: 5.3, larg_max: 5.8},
+            361: {nome: "Baguete para Pão de Alho agranel", peso_min: 43, peso_max: 48, comp_min: 13, comp_max: 17, alt_min: 3.5, alt_max: 3.8, larg_min: 4.1, larg_max: 4.3},
+            363: {nome: "Pão de Alho Tradicional Brico", peso_min: 61, peso_max: 70, comp_min: 13, comp_max: 17, alt_min: 3.5, alt_max: 3.8, larg_min: 4.1, larg_max: 4.3},
+            409: {nome: "Mini Pão Doce Creme", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            410: {nome: "Mini Pão Doce Creme e Coco", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            450: {nome: "Bisnaga Doce", peso_min: 59, peso_max: 65, comp_min: 7, comp_max: 13, alt_min: 4.0, alt_max: 5.0, larg_min: 5.0, larg_max: 6.0},
+            459: {nome: "Pão para Hot Dog Tradicional", peso_min: 63, peso_max: 72, comp_min: 16, comp_max: 20, alt_min: 4.2, alt_max: 4.8, larg_min: 5.0, larg_max: 8.0},
+            466: {nome: "Pão Hambúrguer Brioche", peso_min: 68, peso_max: 74, comp_min: 9.5, comp_max: 10.5, alt_min: 4.5, alt_max: 5.5, larg_min: 0.0, larg_max: 0.0},
+            471: {nome: "Pão de Hambúrguer Australiano", peso_min: 68, peso_max: 76, comp_min: 9.5, comp_max: 11, alt_min: 4.5, alt_max: 5.5, larg_min: 0.0, larg_max: 0.0},
+            472: {nome: "Mini Pão de Hambúrguer Brioche", peso_min: 25, peso_max: 30, comp_min: 7, comp_max: 8, alt_min: 3.5, alt_max: 4.5, larg_min: 0.0, larg_max: 0.0},
+            473: {nome: "Pão para Couvert", peso_min: 50, peso_max: 60, comp_min: 16, comp_max: 20, alt_min: 4.2, alt_max: 4.8, larg_min: 5.0, larg_max: 8.0},
+            474: {nome: "Mini Pão de Hambúrguer Australiano", peso_min: 25, peso_max: 30, comp_min: 7, comp_max: 8, alt_min: 3.5, alt_max: 4.5, larg_min: 0.0, larg_max: 0.0},
+            490: {nome: "Mini Pão Doce Creme De Avelã", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            491: {nome: "Mini Pão Doce com Recheio de Doce de Leite", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            503: {nome: "Pãozinho de leite", peso_min: 40, peso_max: 50, comp_min: 7, comp_max: 11, alt_min: 4.0, alt_max: 5.0, larg_min: 4.0, larg_max: 5.0},
+            507: {nome: "Ciabatta Grande", peso_min: 104, peso_max: 113, comp_min: 17, comp_max: 19, alt_min: 3.0, alt_max: 5.0, larg_min: 7.0, larg_max: 9.0},
+            601: {nome: "Pão de Queijo Coquetel Pacote 1Kg", peso_min: 15, peso_max: 18, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            603: {nome: "Pão de Queijo Maxi Pacote 1Kg", peso_min: 40, peso_max: 50, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            680: {nome: "Broinha Pacote 1Kg", peso_min: 25, peso_max: 27, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            690: {nome: "Chipa Pacote 1Kg", peso_min: 40, peso_max: 45, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            710: {nome: "Cookie Chocolate e Chocolate Branco", peso_min: 45, peso_max: 55, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            712: {nome: "Cookie Baunilha com Chocolate", peso_min: 45, peso_max: 55, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            816: {nome: "Mini Pão Francês Pacote 300g", peso_min: 30, peso_max: 40, comp_min: 7.0, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            817: {nome: "Baguette Congelada Pacote", peso_min: 104, peso_max: 112, comp_min: 20, comp_max: 24, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            818: {nome: "Mini Pão Francês Integral 300g - 31% De Cereais Integrais", peso_min: 38, peso_max: 47, comp_min: 7.0, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            819: {nome: "Pão Recheado Calabresa Congelado Pacote", peso_min: 105, peso_max: 122, comp_min: 16.0, comp_max: 18, alt_min: 3.0, alt_max: 4.5, larg_min: 5.5, larg_max: 6.0},
+            823: {nome: "Pão de Queijo Tradicional Pacote 400g", peso_min: 15, peso_max: 18, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            824: {nome: "Pão Francês Congelado Pacote 220g", peso_min: 50, peso_max: 60, comp_min: 11.0, comp_max: 14, alt_min: 5.0, alt_max: 5.5, larg_min: 5.0, larg_max: 6.0},
+            825: {nome: "Pão Francês Integral Pacote 220g - 31% De Cereais Integrais", peso_min: 50, peso_max: 60, comp_min: 11.0, comp_max: 14, alt_min: 5.0, alt_max: 5.5, larg_min: 5.0, larg_max: 6.0},
+            827: {nome: "Mini Chipa Pacote 400g", peso_min: 13, peso_max: 17, comp_min: 0.0, comp_max: 0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            835: {nome: "Pão Francês Integral 280g - 31% De Cereais Integrais", peso_min: 68, peso_max: 76, comp_min: 13.0, comp_max: 16, alt_min: 5.0, alt_max: 6.5, larg_min: 5.4, larg_max: 6.4},
+            859: {nome: "Baguete Integral Taeq - 31% De Cereais Integrais", peso_min: 87, peso_max: 96, comp_min: 20.0, comp_max: 24, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 6.0},
+            861: {nome: "Mini Pão Francês Qualitá", peso_min: 30, peso_max: 40, comp_min: 7.0, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 6.0},
+            862: {nome: "Baguete Qualitá", peso_min: 104, peso_max: 112, comp_min: 20.0, comp_max: 24, alt_min: 3.0, alt_max: 4.5, larg_min: 5.5, larg_max: 6.0},
+            863: {nome: "Mini Pão Francês Integral Taeq - 31% De Cereais Integrais", peso_min: 23, peso_max: 32, comp_min: 7.0, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            881: {nome: "Bolo Arluno com Gotas de Chocolate", peso_min: 210, peso_max: 230, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            901: {nome: "Placa de Massa Folhada", peso_min: 680, peso_max: 720, comp_min: 33.0, comp_max: 35, alt_min: 1.0, alt_max: 2.0, larg_min: 20.0, larg_max: 25.0},
+            906: {nome: "Pão Australiano Filão", peso_min: 265, peso_max: 275, comp_min: 24.0, comp_max: 31, alt_min: 5.0, alt_max: 6.0, larg_min: 6.0, larg_max: 7.0},
+            1421: {nome: "Baguetine Pacote-312g", peso_min: 70, peso_max: 80, comp_min: 16.0, comp_max: 19, alt_min: 5.0, alt_max: 6.0, larg_min: 5.5, larg_max: 6.5},
+            1442: {nome: "Pão Francês Pré Assado Modelado", peso_min: 60, peso_max: 70, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 7.0, larg_min: 5.4, larg_max: 6.4},
+            1647: {nome: "Pão Bola Pacote com 6 unidades", peso_min: 68, peso_max: 71, comp_min: 9.5, comp_max: 10.5, alt_min: 4.5, alt_max: 5.5, larg_min: 0.0, larg_max: 0.0},
+            1712: {nome: "Pão Francês Tradicional Institucional Sam's", peso_min: 60, peso_max: 70, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 6.5, larg_min: 5.4, larg_max: 6.4},
+            2091: {nome: "Folhado de Maçã - Pacote", peso_min: 95, peso_max: 105, comp_min: 10.0, comp_max: 12, alt_min: 1.5, alt_max: 2.5, larg_min: 5.5, larg_max: 6.5},
+            2120: {nome: "Croissant Pequeno Salgado", peso_min: 25, peso_max: 32, comp_min: 8.0, comp_max: 10.5, alt_min: 2.5, alt_max: 3.5, larg_min: 3.5, larg_max: 4.5},
+            2141: {nome: "Folhado de Calabresa - Pacote", peso_min: 95, peso_max: 105, comp_min: 10.0, comp_max: 12, alt_min: 1.5, alt_max: 2.5, larg_min: 5.5, larg_max: 6.5},
+            3301: {nome: "Baguete Frango com Requeijão - Pacote", peso_min: 174, peso_max: 191, comp_min: 18.0, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            3311: {nome: "Baguete Calabresa com Requeijão - Pacote", peso_min: 174, peso_max: 191, comp_min: 18.0, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            3313: {nome: "Baguete Calabresa com Requeijão - Pacote Sam's", peso_min: 174, peso_max: 191, comp_min: 18.0, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            3331: {nome: "Baguete Mussarela com Requeijão - Pacote", peso_min: 174, peso_max: 191, comp_min: 18.0, comp_max: 22, alt_min: 4.0, alt_max: 5.5, larg_min: 5.5, larg_max: 7.0},
+            3631: {nome: "Pão de Alho Tradicional Brico Bandeja", peso_min: 314, peso_max: 347, comp_min: 0.0, comp_max: 0.0, alt_min: 0.0, alt_max: 0.0, larg_min: 0.0, larg_max: 0.0},
+            3373: {nome: "Pão FHS Branco - 10cm", peso_min: 49, peso_max: 57, comp_min: 10, comp_max: 10.5, alt_min: 5, alt_max: 5.5, larg_min: 7, larg_max: 7.5},
+            3374: {nome: "Pão FHS Branco - 15cm", peso_min: 75, peso_max: 83, comp_min: 15, comp_max: 15.5, alt_min: 5, alt_max: 5.5, larg_min: 7, larg_max: 7.5},
+            3375: {nome: "Pão FHS Branco- 30cm", peso_min: 166, peso_max: 174, comp_min: 30, comp_max: 30.5, alt_min: 5, alt_max: 5.5, larg_min: 7, larg_max: 7.5},
+            3383: {nome: "Pão FHS Marrom - 10cm", peso_min: 53, peso_max: 61, comp_min: 10, comp_max: 10.5, alt_min: 5, alt_max: 5.5, larg_min: 7, larg_max: 7.5},
+            3384: {nome: "Pão FHS Marrom - 15cm", peso_min: 83, peso_max: 91, comp_min: 15, comp_max: 15.5, alt_min: 5, alt_max: 5.5, larg_min: 7, larg_max: 7.5},
+            3385: {nome: "Pão FHS Marrom - 30cm", peso_min: 175, peso_max: 183, comp_min: 30, comp_max: 30.5, alt_min: 5, alt_max: 5.5, larg_min: 7, larg_max: 7.5},
+            4091: {nome: "Mini Pão Doce Creme - Pacote", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            4101: {nome: "Mini Pão Doce Creme e Coco - Pacote", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            4111: {nome: "Mini Pão Doce Creme com Canela e Passas - Pacote", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0, larg_max: 0},
+            4501: {nome: "Bisnaga Doce Pacote 620g", peso_min: 59, peso_max: 65, comp_min: 7, comp_max: 13, alt_min: 4, alt_max: 5, larg_min: 5, larg_max: 6},
+            4591: {nome: "Pão para Hot Dog Tradicional Pacote com 4 unidades", peso_min: 63, peso_max: 72, comp_min: 16.0, comp_max: 20, alt_min: 4.2, alt_max: 4.8, larg_min: 5.0, larg_max: 8.0},
+            4667: {nome: "Pão de Hambúrguer Brioche Pacote com 6 unidades", peso_min: 68, peso_max: 74, comp_min: 9.5, comp_max: 10.5, alt_min: 4.5, alt_max: 5.5, larg_min: 0.0, larg_max: 0.0},
+            4901: {nome: "Mini Pão Doce Creme de Avelã - Pacote", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            4911: {nome: "Mini Pão Doce com Recheio de Doce de Leite - Pacote", peso_min: 40, peso_max: 47, comp_min: 6.5, comp_max: 7.5, alt_min: 3.2, alt_max: 3.8, larg_min: 0.0, larg_max: 0.0},
+            5031: {nome: "Pãozinho de leite Pacote 450g", peso_min: 40, peso_max: 50, comp_min: 7, comp_max: 11, alt_min: 4.0, alt_max: 5.0, larg_min: 4.0, larg_max: 5.0},
+            5071: {nome: "Ciabatta Grande - Pacote", peso_min: 104, peso_max: 113, comp_min: 17, comp_max: 19, alt_min: 3.0, alt_max: 5.0, larg_min: 7.0, larg_max: 9.0},
+            5072: {nome: "Ciabatta Grande Pacote com 6 unidades", peso_min: 104, peso_max: 113, comp_min: 17, comp_max: 19, alt_min: 3.0, alt_max: 5.0, larg_min: 7.0, larg_max: 9.0},
+            5073: {nome: "Ciabatta Grande Pacote Sam's", peso_min: 104, peso_max: 113, comp_min: 17, comp_max: 19, alt_min: 3.0, alt_max: 5.0, larg_min: 7.0, larg_max: 9.0},
+            6802: {nome: "Mini Broinha Pacote 220g", peso_min: 5, peso_max: 7, comp_min: 0, comp_max: 0, alt_min: 0, alt_max: 0, larg_min: 0, larg_max: 0},
+            7101: {nome: "Cookie Chocolate e Chocolate Branco - Pacote", peso_min: 45, peso_max: 55, comp_min: 0, comp_max: 0, alt_min: 0, alt_max: 0, larg_min: 0, larg_max: 0},
+            7102: {nome: "Cookie Chocolate c/ Gotas de Chocolate Branco - Congelado", peso_min: 43, peso_max: 47, comp_min: 0, comp_max: 0, alt_min: 0, alt_max: 0, larg_min: 0, larg_max: 0},
+            7121: {nome: "Cookie Baunilha de Chocolate - Pacote", peso_min: 45, peso_max: 55, comp_min: 0, comp_max: 0, alt_min: 0, alt_max: 0, larg_min: 0, larg_max: 0},
+            7122: {nome: "Cookie Baunilha c/ Gotas de Chocolate - Congelado", peso_min: 43, peso_max: 47, comp_min: 0, comp_max: 0, alt_min: 0, alt_max: 0, larg_min: 0, larg_max: 0},
+            8163: {nome: "Mini Pão Francês 300g - SWIFT", peso_min: 29, peso_max: 40, comp_min: 7, comp_max: 9, alt_min: 3.5, alt_max: 4.5, larg_min: 4.5, larg_max: 5.5},
+            8242: {nome: "Pão Francês Modelado Congelado Pacote", peso_min: 60, peso_max: 70, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 7.0, larg_min: 5.4, larg_max: 6.4},
+            8243: {nome: "Pão Francês 180g - SWIFT", peso_min: 55, peso_max: 65, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 7.0, larg_min: 5.4, larg_max: 7},
+            8244: {nome: "Pão Francês Congelado Pacote - Daki", peso_min: 60, peso_max: 70, comp_min: 13, comp_max: 16, alt_min: 5, alt_max: 7, larg_min: 5.4, larg_max: 6.4},
+            8245: {nome: "Pão Francês 480g - SWIFT - [Pré-assado]", peso_min: 55, peso_max: 65, comp_min: 13, comp_max: 16, alt_min: 5, alt_max: 7, larg_min: 5.4, larg_max: 6.4},
+            8253: {nome: "Pão Francês Integral 210g - SWIFT", peso_min: 68, peso_max: 72, comp_min: 13, comp_max: 16, alt_min: 5.0, alt_max: 6.5, larg_min: 5.4, larg_max: 6.4},
+            9061: {nome: "Pão Australiano Filão - Pacote", peso_min: 265, peso_max: 275, comp_min: 24, comp_max: 31, alt_min: 5.0, alt_max: 6.0, larg_min: 6.0, larg_max: 7}
+        };
+
+        let currentProduct = null;
+        let charts = { peso: null, comprimento: null, altura: null, largura: null };
+        const TOLERANCE_PERCENT = 0.05; 
+        const MIN_AMOSTRAS = 1;
+        const DEFAULT_AMOSTRAS = 5;
+        const MAX_AMOSTRAS = 30;
+
+        // Mapa para nomes de classes de input
+        const dimensionInputClasses = {
+            peso: 'peso-input',
+            comprimento: 'comprimento-input',
+            altura: 'altura-input',
+            largura: 'largura-input'
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDateTime();
+            setInterval(updateDateTime, 1000); 
+            initializeCharts();
+            atualizarColunasVisiveis(); // Garante que as colunas visíveis estejam corretas no início
+            // Inicializa colunas de amostra vazias ou com um número padrão se desejado
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                setupInitialSampleInputs(dim, 0); // Começa com 0, buscarProduto popula com DEFAULT_AMOSTRAS
+            });
+            // Opcional: Auto-buscar um produto inicial para demonstração
+            // document.getElementById('codigoProduto').value = '116';
+            // buscarProduto(); 
+        });
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('pt-BR');
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('pt-BR');
+        }
+
+        function showMessage(message, type = 'info') {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.textContent = message;
+            messageArea.style.color = type === 'error' ? 'var(--reprovado)' : (type === 'success' ? 'var(--aprovado)' : 'var(--dourado)');
+            setTimeout(() => messageArea.textContent = '', 5000); 
+        }
+
+        function setupInitialSampleInputs(dimensionName, count) {
+            const containerId = `${dimensionName}InputsContainer`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = ''; // Limpa inputs existentes
+            for (let i = 0; i < count; i++) {
+                _addSampleInputElement(dimensionName, container, i);
+            }
+            calcularResultados(); // Recalcula após setup inicial
+        }
+
+        function _addSampleInputElement(dimensionName, container, index) {
+            const inputClass = dimensionInputClasses[dimensionName];
+            const currentSampleCount = index !== undefined ? index : container.children.length; // Use index se fornecido, senão count
+
+            const newInput = document.createElement('input');
+            newInput.type = 'number';
+            newInput.step = "0.01"; // Permite números decimais
+            newInput.classList.add('amostra-input', inputClass);
+            newInput.placeholder = `Amostra ${currentSampleCount + 1}`;
+            // Adiciona um listener para 'input' para atualizar em tempo real e 'change' para quando o valor finaliza
+            newInput.addEventListener('input', calcularResultados);
+            newInput.addEventListener('change', calcularResultados);
+            newInput.onkeydown = handleEnterKey; 
+            container.appendChild(newInput);
+        }
+
+        function addSampleInput(dimensionName) {
+            const containerId = `${dimensionName}InputsContainer`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (container.children.length < MAX_AMOSTRAS) {
+                _addSampleInputElement(dimensionName, container);
+                calcularResultados(); 
+            } else {
+                showMessage(`Máximo de ${MAX_AMOSTRAS} amostras atingido para esta dimensão.`, 'info');
+            }
+        }
+
+        function removeLastSampleInput(dimensionName) {
+            const containerId = `${dimensionName}InputsContainer`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (container.children.length > MIN_AMOSTRAS) {
+                container.removeChild(container.lastElementChild);
+                calcularResultados(); 
+            } else {
+                showMessage(`Mínimo de ${MIN_AMOSTRAS} amostra(s) necessária(s).`, 'info');
+            }
+        }
+
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+
+                const currentInput = event.target;
+                const currentColumn = currentInput.closest('.amostra-coluna');
+                if (!currentColumn) return;
+
+                const dimensionInputs = Array.from(currentColumn.querySelectorAll('.amostra-input'));
+                const currentIndex = dimensionInputs.indexOf(currentInput);
+
+                if (currentIndex !== -1) {
+                    const nextInputInColumn = dimensionInputs[currentIndex + 1];
+                    if (nextInputInColumn) {
+                        nextInputInColumn.focus();
+                    } else {
+                        // Tenta mover para a próxima coluna visível
+                        const allColumns = Array.from(document.querySelectorAll('.amostra-coluna.visible'));
+                        const currentColumnIndex = allColumns.indexOf(currentColumn);
+
+                        if (currentColumnIndex !== -1) {
+                            const nextColumn = allColumns[currentColumnIndex + 1];
+                            if (nextColumn) {
+                                const firstInputInNextColumn = nextColumn.querySelector('.amostra-input');
+                                if (firstInputInNextColumn) {
+                                    firstInputInNextColumn.focus();
+                                } else {
+                                    // Adiciona um novo input se a próxima coluna estiver vazia e não for o limite
+                                    const dimensionName = nextColumn.id.replace('coluna', '').toLowerCase();
+                                    addSampleInput(dimensionName);
+                                    nextColumn.querySelector('.amostra-input').focus(); // Foca no novo input
+                                }
+                            } else {
+                                // Se for a última coluna, pode tentar adicionar uma nova amostra nela
+                                const dimensionName = currentColumn.id.replace('coluna', '').toLowerCase();
+                                addSampleInput(dimensionName);
+                                currentColumn.querySelector('.amostra-input:last-child').focus(); // Foca no novo input
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        function buscarProduto() {
+            const codigo = document.getElementById('codigoProduto').value;
+            currentProduct = PRODUTOS_CADASTRO[codigo] || null;
+
+            if (currentProduct) {
+                document.getElementById('nomeProduto').textContent = currentProduct.nome;
+                showMessage(`Produto "${currentProduct.nome}" carregado.`, 'success');
+                // Limpar e recriar campos de amostra com o padrão
+                ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                    setupInitialSampleInputs(dim, DEFAULT_AMOSTRAS);
+                });
+
+            } else {
+                document.getElementById('nomeProduto').textContent = 'N/A';
+                showMessage('Produto não encontrado.', 'error');
+                ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                    document.getElementById(`${dim}Limites`).textContent = `Min: N/A | Max: N/A`;
+                    setupInitialSampleInputs(dim, 0); // Limpa amostras se produto não encontrado
+                });
+            }
+            atualizarLimitesUI();
+            calcularResultados(); 
+            atualizarColunasVisiveis();
+        }
+
+        function atualizarLimitesUI() {
+            const dims = [
+                { key: 'peso', idPrefix: 'peso', minKey: 'peso_min', maxKey: 'peso_max' },
+                { key: 'comprimento', idPrefix: 'comprimento', minKey: 'comp_min', maxKey: 'comp_max' },
+                { key: 'altura', idPrefix: 'altura', minKey: 'alt_min', maxKey: 'alt_max' },
+                { key: 'largura', idPrefix: 'largura', minKey: 'larg_min', maxKey: 'larg_max' }
+            ];
+
+            dims.forEach(d => {
+                const minVal = currentProduct && !isNaN(parseFloat(currentProduct[d.minKey])) ? currentProduct[d.minKey] : "N/A";
+                const maxVal = currentProduct && !isNaN(parseFloat(currentProduct[d.maxKey])) ? currentProduct[d.maxKey] : "N/A";
+                document.getElementById(`${d.idPrefix}Limites`).textContent = `Min: ${minVal} | Max: ${maxVal}`;
+            });
+        }
+
+        function atualizarColunasVisiveis() {
+            const dimensoes = [
+                { nome: 'Peso', filtroId: 'filtroPeso', colunaId: 'colunaPeso', graficoId: 'graficoPesoFrame' },
+                { nome: 'Comprimento', filtroId: 'filtroComprimento', colunaId: 'colunaComprimento', graficoId: 'graficoComprimentoFrame' },
+                { nome: 'Altura', filtroId: 'filtroAltura', colunaId: 'colunaAltura', graficoId: 'graficoAlturaFrame' },
+                { nome: 'Largura', filtroId: 'filtroLargura', colunaId: 'colunaLargura', graficoId: 'graficoLarguraFrame' }
+            ];
+
+            dimensoes.forEach(dim => {
+                const isChecked = document.getElementById(dim.filtroId).checked;
+                document.getElementById(dim.colunaId).classList.toggle('visible', isChecked);
+                const graphFrame = document.getElementById(dim.graficoId);
+                if (graphFrame) { 
+                    graphFrame.classList.toggle('visible', isChecked);
+                    // Redimensiona o gráfico apenas se ele for exibido e existir
+                    if (isChecked && charts[dim.nome.toLowerCase()]) {
+                        charts[dim.nome.toLowerCase()].resize(); 
+                    }
+                }
+            });
+            calcularResultados(); // Recalcula após mudanças de visibilidade
+        }
+
+        function calcularResultados() {
+            if (!currentProduct) {
+                resetAllCalculations();
+                return;
+            }
+
+            const dimensions = [
+                { name: 'peso', unit: 'g', minKey: 'peso_min', maxKey: 'peso_max' },
+                { name: 'comprimento', unit: 'cm', minKey: 'comp_min', maxKey: 'comp_max' },
+                { name: 'altura', unit: 'cm', minKey: 'alt_min', maxKey: 'alt_max' },
+                { name: 'largura', unit: 'cm', minKey: 'larg_min', maxKey: 'larg_max' }
+            ];
+
+            dimensions.forEach(dim => {
+                // Só calcula e atualiza se o checkbox da dimensão estiver marcado
+                if (!document.getElementById(`filtro${dim.name.charAt(0).toUpperCase() + dim.name.slice(1)}`).checked) {
+                    resetDimensionCalculations(dim.name); 
+                    return;
+                }
+
+                const inputClass = dimensionInputClasses[dim.name];
+                const inputs = document.querySelectorAll(`#${dim.name}InputsContainer .${inputClass}`);
+                const minIdeal = parseFloat(currentProduct[dim.minKey]);
+                const maxIdeal = parseFloat(currentProduct[dim.maxKey]);
+
+                let aprovadas = 0, atencao = 0, reprovadas = 0;
+                const valoresValidos = [];
+                const sampleValuesForChart = new Array(inputs.length).fill(null); // Para o Chart.js
+
+
+                if (isNaN(minIdeal) || isNaN(maxIdeal)) {
+                    resetDimensionCalculations(dim.name);
+                    inputs.forEach((inputEl) => {
+                        inputEl.className = `amostra-input ${inputClass}`; 
+                    });
+                    updateChart(dim.name, sampleValuesForChart, null, null, null, null); 
+                    return; 
+                }
+
+                const range = maxIdeal - minIdeal;
+                let toleranceValue = 0;
+                if (range > 0) {
+                    toleranceValue = range * TOLERANCE_PERCENT;
+                } else if (range === 0 && minIdeal !== 0) { 
+                    toleranceValue = Math.abs(minIdeal * TOLERANCE_PERCENT);
+                }
+
+                const minAtencao = minIdeal - toleranceValue;
+                const maxAtencao = maxIdeal + toleranceValue;
+
+                inputs.forEach((inputEl, index) => {
+                    const valor = parseFloat(inputEl.value);
+                    inputEl.className = `amostra-input ${inputClass}`; // Reset styles first
+
+                    if (!isNaN(valor)) {
+                        valoresValidos.push(valor);
+                        sampleValuesForChart[index] = valor;
+
+                        if (valor >= minIdeal && valor <= maxIdeal) {
+                            aprovadas++;
+                            inputEl.classList.add('aprovado-style');
+                        } else if ((valor >= minAtencao && valor < minIdeal) || (valor > maxIdeal && valor <= maxAtencao)) {
+                            atencao++;
+                            inputEl.classList.add('atencao-style');
+                        } else {
+                            reprovadas++;
+                            inputEl.classList.add('reprovado-style');
+                        }
+                    } else {
+                        sampleValuesForChart[index] = null; 
+                    }
+                });
+
+                const totalAmostrasConsideradas = valoresValidos.length;
+                document.getElementById(`${dim.name}Aprovadas`).textContent = `Aprovadas: ${aprovadas}`;
+                document.getElementById(`${dim.name}Atencao`).textContent = `Atenção: ${atencao}`;
+                document.getElementById(`${dim.name}Reprovadas`).textContent = `Reprovadas: ${reprovadas}`;
+                const porcentagemDentro = totalAmostrasConsideradas > 0 ? ((aprovadas / totalAmostrasConsideradas) * 100).toFixed(1) : 0;
+                document.getElementById(`${dim.name}Porcentagem`).textContent = `% Dentro (Ideal): ${porcentagemDentro}%`;
+                
+                // Atualizar resumo dos gráficos também
+                const resumoGrafElement2 = document.getElementById(`${dim.name}Aprovadas2`);
+                if (resumoGrafElement2) {
+                    document.getElementById(`${dim.name}Aprovadas2`).textContent = `Aprovadas: ${aprovadas}`;
+                    document.getElementById(`${dim.name}Atencao2`).textContent = `Atenção: ${atencao}`;
+                    document.getElementById(`${dim.name}Reprovadas2`).textContent = `Reprovadas: ${reprovadas}`;
+                    document.getElementById(`${dim.name}Porcentagem2`).textContent = `% Dentro: ${porcentagemDentro}%`;
+                }
+
+                if (totalAmostrasConsideradas > 0) {
+                    const menor = Math.min(...valoresValidos).toFixed(2);
+                    const maior = Math.max(...valoresValidos).toFixed(2);
+                    const soma = valoresValidos.reduce((acc, val) => acc + val, 0);
+                    const media = (soma / totalAmostrasConsideradas).toFixed(2);
+
+                    let desvioPadrao = 'N/A';
+                    if (totalAmostrasConsideradas > 1) { 
+                        const mean = parseFloat(media);
+                        const variance = valoresValidos.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / totalAmostrasConsideradas; 
+                        desvioPadrao = Math.sqrt(variance).toFixed(2);
+                    }
+
+                    document.getElementById(`${dim.name}Menor`).textContent = `Menor: ${menor}`;
+                    document.getElementById(`${dim.name}Media`).textContent = `Média: ${media}`;
+                    document.getElementById(`${dim.name}Maior`).textContent = `Maior: ${maior}`;
+                    document.getElementById(`${dim.name}Desvio`).textContent = `Desvio Padrão: ${desvioPadrao}`;
+                } else {
+                    document.getElementById(`${dim.name}Menor`).textContent = `Menor: N/A`;
+                    document.getElementById(`${dim.name}Media`).textContent = `Média: N/A`;
+                    document.getElementById(`${dim.name}Maior`).textContent = `Maior: N/A`;
+                    document.getElementById(`${dim.name}Desvio`).textContent = `Desvio Padrão: N/A`;
+                }
+                updateChart(dim.name, sampleValuesForChart, minIdeal, maxIdeal, minAtencao, maxAtencao);
+            });
+        }
+
+        function resetDimensionCalculations(dimName) {
+            document.getElementById(`${dimName}Aprovadas`).textContent = `Aprovadas: 0`;
+            document.getElementById(`${dimName}Atencao`).textContent = `Atenção: 0`;
+            document.getElementById(`${dimName}Reprovadas`).textContent = `Reprovadas: 0`;
+            document.getElementById(`${dimName}Porcentagem`).textContent = `% Dentro (Ideal): 0%`;
+            
+            // Reset do resumo dos gráficos também
+            const resumoGrafElement2 = document.getElementById(`${dimName}Aprovadas2`);
+            if (resumoGrafElement2) {
+                document.getElementById(`${dimName}Aprovadas2`).textContent = `Aprovadas: 0`;
+                document.getElementById(`${dimName}Atencao2`).textContent = `Atenção: 0`;
+                document.getElementById(`${dimName}Reprovadas2`).textContent = `Reprovadas: 0`;
+                document.getElementById(`${dimName}Porcentagem2`).textContent = `% Dentro: 0%`;
+            }
+
+            document.getElementById(`${dimName}Menor`).textContent = `Menor: N/A`;
+            document.getElementById(`${dimName}Media`).textContent = `Média: N/A`;
+            document.getElementById(`${dimName}Maior`).textContent = `Maior: N/A`;
+            document.getElementById(`${dimName}Desvio`).textContent = `Desvio Padrão: N/A`;
+
+            const inputClass = dimensionInputClasses[dimName];
+            const inputsContainer = document.getElementById(`${dimName}InputsContainer`);
+            const inputs = inputsContainer ? inputsContainer.querySelectorAll(`.${inputClass}`) : [];
+
+            const sampleValuesForChart = new Array(inputs.length).fill(null); // Envia array de nulos para o chart
+            inputs.forEach(inputEl => {
+                inputEl.className = `amostra-input ${inputClass}`; // Remove estilos de status
+            });
+            updateChart(dimName, sampleValuesForChart, null, null, null, null);
+        }
+
+        function resetAllCalculations() {
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dimName => {
+                resetDimensionCalculations(dimName);
+                document.getElementById(`${dimName}Limites`).textContent = `Min: N/A | Max: N/A`;
+                // Não limpar os inputs aqui, pois buscarProduto ou a inicialização cuidam disso
+            });
+        }
+
+        function initializeCharts() {
+    // Registra o plugin de anotação
+    if (typeof chartjs_plugin_annotation !== 'undefined') {
+        Chart.register(chartjs_plugin_annotation);
+        console.log("Plugin de anotação carregado com sucesso");
+    } else {
+        console.warn("Plugin de anotação não encontrado - gráficos serão exibidos sem zonas de tolerância");
+    }
+
+    const chartOptionsBase = (title, unit) => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: false,
+                title: { display: true, text: `Valor (${unit})`, color: 'var(--vinho-escuro)' },
+                ticks: { color: 'var(--vinho-escuro)' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
+            },
+            x: {
+                title: { display: true, text: 'Amostras', color: 'var(--vinho-escuro)' },
+                ticks: { color: 'var(--vinho-escuro)', autoSkip: true, maxRotation: 0, minRotation: 0 },
+                grid: { display: false }
+            }
+        },
+        plugins: {
+            title: { display: true, text: title, color: 'var(--vinho-escuro)', font: { size: 16 } },
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toFixed(2) + ' ' + unit;
+                        }
+                        return label;
+                    }
+                }
+            },
+            annotation: { 
+                annotations: {} // Será preenchido dinamicamente
+            }
+        }
+    });
+
+    const dims = [
+        { name: 'peso', title: 'Peso', unit: 'g' },
+        { name: 'comprimento', title: 'Comprimento', unit: 'cm' },
+        { name: 'altura', title: 'Altura', unit: 'cm' },
+        { name: 'largura', title: 'Largura', unit: 'cm' }
+    ];
+
+    dims.forEach(d => {
+        const ctx = document.getElementById(`grafico${d.name.charAt(0).toUpperCase() + d.name.slice(1)}`).getContext('2d');
+        charts[d.name] = new Chart(ctx, {
+            type: 'scatter', // Alterado para scatter para melhor visualização dos pontos
+            data: {
+                labels: Array.from({length: DEFAULT_AMOSTRAS}, (_, i) => `A${i+1}`),
+                datasets: [{
+                    label: 'Amostras',
+                    data: Array(DEFAULT_AMOSTRAS).fill(null),
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: chartOptionsBase(d.title, d.unit)
+        });
+    });
+}
+
+        function updateChart(dimName, dataArray, minIdeal, maxIdeal, minAtencao, maxAtencao) {
+    const chart = charts[dimName];
+    if (!chart) {
+        console.error(`Gráfico para ${dimName} não encontrado`);
+        return;
+    }
+
+    // Prepara os dados no formato {x, y} para o gráfico
+    const sampleData = dataArray.map((valor, idx) => 
+        valor !== null && !isNaN(valor) ? { x: idx + 1, y: valor } : null
+    ).filter(item => item !== null);
+
+    // Atualiza os datasets do gráfico
+    chart.data.datasets = [
+        // Dataset para a linha do limite inferior (azul)
+        {
+            label: 'Limite Inferior',
+            data: Array.from({length: dataArray.length}, (_, i) => ({x: i + 1, y: minIdeal})),
+            type: 'line',
+            borderColor: '#007BFF',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            fill: false,
+            pointRadius: 0,
+            tension: 0
+        },
+        // Dataset para a linha do limite superior (verde)
+        {
+            label: 'Limite Superior',
+            data: Array.from({length: dataArray.length}, (_, i) => ({x: i + 1, y: maxIdeal})),
+            type: 'line',
+            borderColor: '#28A745',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            fill: false,
+            pointRadius: 0,
+            tension: 0
+        },
+        // Dataset principal para as amostras (linha amarela)
+        {
+            label: 'Amostras',
+            data: sampleData,
+            type: 'line',
+            borderColor: '#FFD700',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            pointRadius: 4,
+            pointBackgroundColor: '#FFD700',
+            pointBorderColor: '#FFD700',
+            pointHoverRadius: 6
+        }
+    ];
+
+    // Atualiza os labels das amostras
+    chart.data.labels = Array.from({ length: dataArray.length }, (_, i) => `A${i + 1}`);
+
+    // Configuração das escalas
+    let allValues = sampleData.map(item => item.y);
+    if (minIdeal !== null && !isNaN(minIdeal)) allValues.push(minIdeal);
+    if (maxIdeal !== null && !isNaN(maxIdeal)) allValues.push(maxIdeal);
+    if (minAtencao !== null && !isNaN(minAtencao)) allValues.push(minAtencao);
+    if (maxAtencao !== null && !isNaN(maxAtencao)) allValues.push(maxAtencao);
+
+    const calculatedMinY = Math.min(...allValues);
+    const calculatedMaxY = Math.max(...allValues);
+    const padding = Math.abs((calculatedMaxY - calculatedMinY) * 0.1) || 5;
+
+    chart.options.scales = {
+        y: {
+            min: calculatedMinY - padding,
+            max: calculatedMaxY + padding,
+            beginAtZero: false,
+            title: { 
+                display: true, 
+                text: `Valor (${dimName === 'peso' ? 'g' : 'cm'})`, 
+                color: 'var(--vinho-escuro)' 
+            },
+            ticks: { color: 'var(--vinho-escuro)' },
+            grid: { color: 'rgba(0,0,0,0.1)' }
+        },
+        x: {
+            title: { 
+                display: true, 
+                text: 'Amostras', 
+                color: 'var(--vinho-escuro)' 
+            },
+            ticks: { 
+                color: 'var(--vinho-escuro)', 
+                autoSkip: dataArray.length > 15,
+                maxTicksLimit: dataArray.length > 15 ? 10 : undefined,
+                maxRotation: 0, 
+                minRotation: 0 
+            },
+            grid: { display: false }
+        }
+    };
+
+    // Configuração das anotações (zonas de tolerância)
+    chart.options.plugins.annotation = {
+        annotations: {
+            // Zona de atenção inferior
+            boxAtencaoInf: {
+                type: 'box',
+                yMin: minAtencao,
+                yMax: minIdeal,
+                backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                borderColor: 'rgba(0,0,0,0)',
+                drawTime: 'beforeDatasetsDraw'
+            },
+            // Zona de atenção superior
+            boxAtencaoSup: {
+                type: 'box',
+                yMin: maxIdeal,
+                yMax: maxAtencao,
+                backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                borderColor: 'rgba(0,0,0,0)',
+                drawTime: 'beforeDatasetsDraw'
+            },
+            // Zona reprovado inferior
+            boxReprovadoInf: {
+                type: 'box',
+                yMin: calculatedMinY - padding,
+                yMax: minAtencao,
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                borderColor: 'rgba(0,0,0,0)',
+                drawTime: 'beforeDatasetsDraw'
+            },
+            // Zona reprovado superior
+            boxReprovadoSup: {
+                type: 'box',
+                yMin: maxAtencao,
+                yMax: calculatedMaxY + padding,
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                borderColor: 'rgba(0,0,0,0)',
+                drawTime: 'beforeDatasetsDraw'
+            }
+        }
+    };
+
+    chart.update();
+}
+        function salvarDados() {
+            if (!currentProduct) {
+                showMessage("Selecione um produto antes de atualizar os dados.", "error");
+                return;
+            }
+            
+            const dadosParaSalvar = {
+                produto: currentProduct.nome,
+                codigo: document.getElementById('codigoProduto').value,
+                timestamp: new Date().toISOString(),
+                amostras: {},
+                analiseConformidade: {},
+                limites: {
+                    peso_min: currentProduct.peso_min, peso_max: currentProduct.peso_max,
+                    comp_min: currentProduct.comp_min, comp_max: currentProduct.comp_max,
+                    alt_min: currentProduct.alt_min, alt_max: currentProduct.alt_max,
+                    larg_min: currentProduct.larg_min, larg_max: currentProduct.larg_max
+                }
+            };
+
+            let totalNaoConformidades = 0;
+            let totalAmostras = 0;
+
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                const inputs = document.querySelectorAll(`#${dim}InputsContainer .amostra-input`);
+                const valores = Array.from(inputs).map(input => parseFloat(input.value)).filter(val => !isNaN(val));
+                dadosParaSalvar.amostras[dim] = valores;
+                
+                if (valores.length > 0) {
+                    const aprovadas = parseInt(document.getElementById(`${dim}Aprovadas`).textContent.split(': ')[1] || '0');
+                    const atencao = parseInt(document.getElementById(`${dim}Atencao`).textContent.split(': ')[1] || '0');
+                    const reprovadas = parseInt(document.getElementById(`${dim}Reprovadas`).textContent.split(': ')[1] || '0');
+                    const porcentagem = parseFloat(document.getElementById(`${dim}Porcentagem`).textContent.split(': ')[1].replace('%', '') || '0');
+                    
+                    dadosParaSalvar.analiseConformidade[dim] = {
+                        aprovadas, atencao, reprovadas, porcentagem,
+                        total: valores.length
+                    };
+                    
+                    totalNaoConformidades += (atencao + reprovadas);
+                    totalAmostras += valores.length;
+                }
+            });
+
+            dadosParaSalvar.resumoGeral = {
+                totalAmostras,
+                totalNaoConformidades,
+                taxaConformidade: totalAmostras > 0 ? (((totalAmostras - totalNaoConformidades) / totalAmostras) * 100).toFixed(1) : 0
+            };
+
+            // Salvar no banco de histórico
+            salvarNoBancoHistorico(dadosParaSalvar);
+
+            localStorage.setItem(`qualidade_${dadosParaSalvar.codigo}_${Date.now()}`, JSON.stringify(dadosParaSalvar));
+            showMessage(`Dados salvos! ${totalNaoConformidades > 0 ? `Atenção: ${totalNaoConformidades} não conformidade(s) detectada(s).` : 'Todos os dados estão em conformidade.'}`, totalNaoConformidades > 0 ? 'info' : 'success');
+        }
+
+        // Função para salvar no banco de histórico persistente
+        function salvarNoBancoHistorico(dados) {
+            let bancoHistorico = JSON.parse(localStorage.getItem('banco_historico_qualidade') || '[]');
+            
+            // Adicionar entrada no banco
+            const entradaHistorico = {
+                id: Date.now(),
+                timestamp: dados.timestamp,
+                produto: dados.produto,
+                codigo: dados.codigo,
+                totalAmostras: dados.resumoGeral.totalAmostras,
+                totalNaoConformidades: dados.resumoGeral.totalNaoConformidades,
+                taxaConformidade: dados.resumoGeral.taxaConformidade,
+                detalhes: dados.analiseConformidade,
+                dadosCompletos: dados
+            };
+            
+            bancoHistorico.push(entradaHistorico);
+            
+            // Manter apenas os últimos 1000 registros para evitar sobrecarga
+            if (bancoHistorico.length > 1000) {
+                bancoHistorico = bancoHistorico.slice(-1000);
+            }
+            
+            localStorage.setItem('banco_historico_qualidade', JSON.stringify(bancoHistorico));
+        }
+
+        // Função para consultar produtos fora de conformidade
+        function consultarNaoConformidades(filtros = {}) {
+            const bancoHistorico = JSON.parse(localStorage.getItem('banco_historico_qualidade') || '[]');
+            
+            return bancoHistorico.filter(entrada => {
+                // Filtrar apenas registros com não conformidades
+                if (entrada.totalNaoConformidades === 0) return false;
+                
+                // Aplicar filtros opcionais
+                if (filtros.produto && !entrada.produto.toLowerCase().includes(filtros.produto.toLowerCase())) return false;
+                if (filtros.codigo && entrada.codigo.toString() !== filtros.codigo.toString()) return false;
+                if (filtros.dataInicial && new Date(entrada.timestamp) < new Date(filtros.dataInicial)) return false;
+                if (filtros.dataFinal && new Date(entrada.timestamp) > new Date(filtros.dataFinal)) return false;
+                if (filtros.taxaMaxima && parseFloat(entrada.taxaConformidade) > filtros.taxaMaxima) return false;
+                
+                return true;
+            }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        // Função para gerar relatório de não conformidades
+        function gerarRelatorioNaoConformidades() {
+            const naoConformidades = consultarNaoConformidades();
+            
+            if (naoConformidades.length === 0) {
+                showMessage("Nenhuma não conformidade encontrada no histórico!", "info");
+                return;
+            }
+            
+            const relatorioWindow = window.open('', '_blank');
+            
+            let html = `
+                <html>
+                <head>
+                    <title>Relatório de Não Conformidades</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+                        h1, h2 { color: #800020; border-bottom: 2px solid #800020; padding-bottom: 5px; }
+                        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; font-weight: bold; }
+                        .alta { background-color: #ffebee; }
+                        .media { background-color: #fff3e0; }
+                        .baixa { background-color: #e8f5e8; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Relatório de Não Conformidades</h1>
+                    <p><strong>Data do Relatório:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+                    <p><strong>Total de Registros com Não Conformidades:</strong> ${naoConformidades.length}</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Produto</th>
+                            <th>Código</th>
+                            <th>Total Amostras</th>
+                            <th>Não Conformidades</th>
+                            <th>Taxa Conformidade (%)</th>
+                            <th>Severidade</th>
+                        </tr>
+            `;
+            
+            naoConformidades.forEach(entrada => {
+                const severidade = entrada.taxaConformidade < 70 ? 'Alta' : 
+                                 entrada.taxaConformidade < 85 ? 'Média' : 'Baixa';
+                const classSeveridade = severidade.toLowerCase();
+                
+                html += `
+                    <tr class="${classSeveridade}">
+                        <td>${new Date(entrada.timestamp).toLocaleString('pt-BR')}</td>
+                        <td>${entrada.produto}</td>
+                        <td>${entrada.codigo}</td>
+                        <td>${entrada.totalAmostras}</td>
+                        <td>${entrada.totalNaoConformidades}</td>
+                        <td>${entrada.taxaConformidade}%</td>
+                        <td>${severidade}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </table>
+                </body>
+                </html>
+            `;
+            
+            relatorioWindow.document.write(html);
+            relatorioWindow.document.close();
+        }
+
+        function printScreen() {
+            window.print();
+        }
+
+        function abrirHistorico() {
+            window.open('historico.html', '_blank');
+        }
+
+        // Função para salvar automaticamente quando há dados válidos
+        function salvarAutomaticamente() {
+            if (!currentProduct) return;
+            
+            // Verifica se há pelo menos uma amostra válida
+            let temAmostras = false;
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                const inputs = document.querySelectorAll(`#${dim}InputsContainer .amostra-input`);
+                const valores = Array.from(inputs).map(input => parseFloat(input.value)).filter(val => !isNaN(val));
+                if (valores.length > 0) temAmostras = true;
+            });
+            
+            if (temAmostras) {
+                salvarDados();
+            }
+        }
+
+        function mostrarMensagemOperacao(operacao) {
+            const mensagens = {
+                'salvar': 'Deseja salvar os dados atuais?',
+                'relatorio': 'Deseja gerar o relatório?',
+                'pdf': 'Deseja gerar o relatório em PDF?',
+                'excel': 'Deseja exportar para Excel?',
+                'nao-conformidades': 'Deseja ver o relatório de não conformidades?',
+                'historico': 'Deseja ver o histórico?'
+            };
+            
+            const confirmacao = confirm(mensagens[operacao] || 'Deseja continuar?');
+            if (confirmacao) {
+                switch(operacao) {
+                    case 'salvar': salvarDados(); break;
+                    case 'relatorio': gerarRelatorio(); break;
+                    case 'pdf': gerarRelatorioPDF(); break;
+                    case 'excel': salvarEmExcel(); break;
+                    case 'nao-conformidades': gerarRelatorioNaoConformidades(); break;
+                    case 'historico': abrirHistorico(); break;
+                }
+            }
+        }
+
+        function gerarRelatorio() {
+            if (!currentProduct) {
+                showMessage("Selecione um produto antes de gerar o relatório.", "error");
+                return;
+            }
+
+            const relatorio = generateReportData();
+            const relatorioWindow = window.open('', '_blank');
+            relatorioWindow.document.write(`
+                <html>
+                <head>
+                    <title>Relatório de Qualidade - ${currentProduct.nome}</title>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 20px; 
+                            line-height: 1.6;
+                            color: #333;
+                        }
+                        h1, h2 { 
+                            color: #800020; 
+                            border-bottom: 2px solid #800020;
+                            padding-bottom: 5px;
+                        }
+                        table { 
+                            border-collapse: collapse; 
+                            width: 100%; 
+                            margin: 15px 0; 
+                        }
+                        th, td { 
+                            border: 1px solid #ddd; 
+                            padding: 8px; 
+                            text-align: left; 
+                        }
+                        th { 
+                            background-color: #f2f2f2; 
+                            font-weight: bold;
+                        }
+                        .aprovado { color: #28A745; font-weight: bold; }
+                        .atencao { color: #FFC107; font-weight: bold; }
+                        .reprovado { color: #DC3545; font-weight: bold; }
+                        .header-info {
+                            background-color: #f8f8f8;
+                            padding: 15px;
+                            border-radius: 5px;
+                            margin-bottom: 20px;
+                        }
+                        .summary-box {
+                            background-color: #fff;
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            margin: 10px 0;
+                            border-radius: 5px;
+                        }
+                        @media print {
+                            body { margin: 10px; }
+                            h1, h2 { page-break-after: avoid; }
+                            table { page-break-inside: avoid; }
+                        }
+                    </style>
+                </head>
+                <body class="relatorio-style">
+                    ${relatorio}
+                </body>
+                </html>
+            `);
+            relatorioWindow.document.close();
+            showMessage("Relatório gerado em nova janela!", "success");
+        }
+
+        function generateReportData() {
+            const now = new Date();
+            let html = `
+                <div class="header-info">
+                    <h1>Relatório de Análise de Qualidade</h1>
+                    <p><strong>Produto:</strong> ${currentProduct.nome}</p>
+                    <p><strong>Código:</strong> ${document.getElementById('codigoProduto').value}</p>
+                    <p><strong>Data/Hora:</strong> ${now.toLocaleString('pt-BR')}</p>
+                </div>
+            `;
+
+            let totalAprovadas = 0, totalAtencao = 0, totalReprovadas = 0, totalAmostras = 0;
+
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                if (!document.getElementById(`filtro${dim.charAt(0).toUpperCase() + dim.slice(1)}`).checked) return;
+                
+                const unit = dim === 'peso' ? 'g' : 'cm';
+                const inputs = document.querySelectorAll(`#${dim}InputsContainer .amostra-input`);
+                const valores = Array.from(inputs).map(input => parseFloat(input.value)).filter(val => !isNaN(val));
+                
+                if (valores.length === 0) return;
+
+                const aprovadas = parseInt(document.getElementById(`${dim}Aprovadas`).textContent.split(': ')[1]);
+                const atencao = parseInt(document.getElementById(`${dim}Atencao`).textContent.split(': ')[1]);
+                const reprovadas = parseInt(document.getElementById(`${dim}Reprovadas`).textContent.split(': ')[1]);
+                const porcentagem = document.getElementById(`${dim}Porcentagem`).textContent.split(': ')[1];
+                
+                // Estatísticas
+                const menor = document.getElementById(`${dim}Menor`).textContent.split(': ')[1];
+                const media = document.getElementById(`${dim}Media`).textContent.split(': ')[1];
+                const maior = document.getElementById(`${dim}Maior`).textContent.split(': ')[1];
+                const desvio = document.getElementById(`${dim}Desvio`).textContent.split(': ')[1];
+
+                totalAprovadas += aprovadas;
+                totalAtencao += atencao;
+                totalReprovadas += reprovadas;
+                totalAmostras += valores.length;
+
+                // Capturar o gráfico como imagem
+                const canvas = document.getElementById(`grafico${dim.charAt(0).toUpperCase() + dim.slice(1)}`);
+                const chartImageDataURL = canvas ? canvas.toDataURL('image/png') : '';
+
+                html += `
+                    <div style="page-break-before: auto; margin-bottom: 30px;">
+                        <h2>${dim.charAt(0).toUpperCase() + dim.slice(1)} (${unit})</h2>
+                        <div class="summary-box" style="display: flex; gap: 20px; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <h3>Estatísticas e Resumo</h3>
+                                <table style="width: 100%;">
+                                    <tr><th>Categoria</th><th>Quantidade</th><th>Estatística</th><th>Valor</th></tr>
+                                    <tr><td class="aprovado">Aprovadas</td><td class="aprovado">${aprovadas}</td><td>Menor</td><td>${menor}</td></tr>
+                                    <tr><td class="atencao">Atenção</td><td class="atencao">${atencao}</td><td>Média</td><td>${media}</td></tr>
+                                    <tr><td class="reprovado">Reprovadas</td><td class="reprovado">${reprovadas}</td><td>Maior</td><td>${maior}</td></tr>
+                                    <tr><td><strong>% Conforme</strong></td><td><strong>${porcentagem}</strong></td><td>Desvio Padrão</td><td>${desvio}</td></tr>
+                                </table>
+                                <p style="margin-top: 15px;"><strong>Amostras (${unit}):</strong> ${valores.join(', ')}</p>
+                            </div>
+                            ${chartImageDataURL ? `<div style="flex: 1;"><img src="${chartImageDataURL}" alt="Gráfico ${dim}" style="width: 100%; max-width: 400px; height: auto; border: 1px solid #ddd; border-radius: 5px;"></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Resumo geral
+            const percentualGeral = totalAmostras > 0 ? ((totalAprovadas / totalAmostras) * 100).toFixed(1) : 0;
+            html += `
+                <div class="summary-box">
+                    <h2>Resumo Geral</h2>
+                    <table>
+                        <tr><th>Total de Amostras</th><th>Aprovadas</th><th>Atenção</th><th>Reprovadas</th><th>% Conformidade</th></tr>
+                        <tr><td>${totalAmostras}</td><td class="aprovado">${totalAprovadas}</td><td class="atencao">${totalAtencao}</td><td class="reprovado">${totalReprovadas}</td><td><strong>${percentualGeral}%</strong></td></tr>
+                    </table>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function gerarRelatorioPDF() {
+            if (!currentProduct) {
+                showMessage("Selecione um produto antes de gerar o relatório PDF.", "error");
+                return;
+            }
+
+            const relatorio = generateReportData();
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; color: #333;">
+                    ${relatorio}
+                </div>
+            `;
+            
+            const opt = {
+                margin: 1,
+                filename: `relatorio_qualidade_${currentProduct.nome}_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                showMessage("Relatório PDF gerado com sucesso!", "success");
+            }).catch((error) => {
+                showMessage("Erro ao gerar PDF: " + error.message, "error");
+            });
+        }
+
+        function salvarEmExcel() {
+            console.log("Salvar em Excel - Clicado");
+            if (!currentProduct) {
+                showMessage("Selecione um produto antes de exportar para Excel.", "error");
+                return;
+            }
+
+            const dados = [];
+            const headers = ['Amostra'];
+            
+            // Adiciona headers das dimensões visíveis
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                if (document.getElementById(`filtro${dim.charAt(0).toUpperCase() + dim.slice(1)}`).checked) {
+                    const unit = dim === 'peso' ? 'g' : 'cm';
+                    headers.push(`${dim.charAt(0).toUpperCase() + dim.slice(1)} (${unit})`);
+                }
+            });
+
+            dados.push(headers);
+
+            // Determina o número máximo de amostras
+            let maxAmostras = 0;
+            ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                if (document.getElementById(`filtro${dim.charAt(0).toUpperCase() + dim.slice(1)}`).checked) {
+                    const inputs = document.querySelectorAll(`#${dim}InputsContainer .amostra-input`);
+                    maxAmostras = Math.max(maxAmostras, inputs.length);
+                }
+            });
+
+            // Preenche os dados
+            for (let i = 0; i < maxAmostras; i++) {
+                const linha = [`Amostra ${i + 1}`];
+                
+                ['peso', 'comprimento', 'altura', 'largura'].forEach(dim => {
+                    if (document.getElementById(`filtro${dim.charAt(0).toUpperCase() + dim.slice(1)}`).checked) {
+                        const inputs = document.querySelectorAll(`#${dim}InputsContainer .amostra-input`);
+                        const valor = inputs[i] ? inputs[i].value : '';
+                        linha.push(valor || '-');
+                    }
+                });
+                
+                dados.push(linha);
+            }
+
+            // Converte para CSV
+            const csv = dados.map(linha => linha.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `qualidade_${currentProduct.nome}_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showMessage("Arquivo CSV baixado com sucesso!", "success");
+            } else {
+                showMessage("Seu navegador não suporta download de arquivos.", "error");
+            }
+        }
+    </script>
+</body>
+</html>
